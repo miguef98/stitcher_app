@@ -4,6 +4,7 @@ import threading
 from stitcher import crearPanorama
 from PIL import ImageTk, Image
 from time import sleep
+import argparse
 
 class TextoEntry(tk.Entry):
     def __init__(self, textoInicial, parent, *args, **kwargs):
@@ -33,11 +34,12 @@ class MenuIngresoGrilla(tk.Frame):
         self.botonIngreso.grid(row=1, column=3)
 
 class MenuIngresoImagenes(tk.Frame):
-    def __init__(self, parent, grilla, ancho, alto, *args, **kwargs):
+    def __init__(self, parent, grilla, ancho, alto, descriptor, *args, **kwargs):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.grilla = grilla
         self.grid(rows=self.grilla[0] + 1, columns=self.grilla[1])
         self.parent = parent
+        self.descriptor = descriptor
 
         self.pathImagenes = [ None for _ in range( self.grilla[0] * self.grilla[1] ) ]
 
@@ -59,7 +61,7 @@ class MenuIngresoImagenes(tk.Frame):
                 crearPanorama(*args, **kwargs)
                 valorRetorno[0] = 0
             except Exception as e:
-                valorRetorno[0] = int( str(e)[0:2] )
+                valorRetorno[0] = int( str(e)[0:2] ) if str(e)[0:2].isnumeric() else -1
             
             return
 
@@ -89,8 +91,8 @@ class MenuIngresoImagenes(tk.Frame):
             label = tk.Label( parent, text=texto, background='#BBB', padx=30, pady=20 )
             label.grid(row= 0, column = 0, rowspan=parent.grilla[0], columnspan=parent.grilla[1])
 
-        resultadoPegado = [0]
-        threadStitch = threading.Thread( target=threadPanorama, args=(resultadoPegado,  self.grilla, self.pathImagenes), kwargs={'desc':'SURF'} )
+        resultadoPegado = [1]
+        threadStitch = threading.Thread( target=threadPanorama, args=(resultadoPegado,  self.grilla, self.pathImagenes, self.descriptor) )
         threadAnimacion = threading.Thread( target=animacionEspera, args=(self, threadStitch, resultadoPegado) )
 
         threadStitch.start()
@@ -158,18 +160,30 @@ class FrameImagen(tk.Frame):
         self.botonAbrirImagen['state'] = 'disabled'
 
 class App(tk.Tk):
-    def __init__( self ):
+    def __init__( self, width, height, descriptor ):
         super().__init__()
+        self.title("Stitcher")
+        self.width = width
+        self.height = height
+        self.descriptor = descriptor
 
     def crearGrilla( self, frame, w, h ):
         if w.isnumeric() and h.isnumeric():
             frame.grid_forget()
             frame.destroy()
 
-            MenuIngresoImagenes(self, (int(w), int(h)), 640, 480)
+            MenuIngresoImagenes(self, (int(w), int(h)), self.width, self.height, self.descriptor)
 
 
 if __name__ == "__main__":
-    root = App()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-wd", "--width", help="setear ancho ventana", default=640, type=int)
+    parser.add_argument("-hg", "--height", help="setear alto ventana", default=480, type=int)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--SIFT", help="utilizar SIFT como descriptor", action="store_true")
+    group.add_argument("--ORB", help="utilizar ORB como descriptor", action="store_true")
+    args = parser.parse_args()
+
+    root = App( args.width, args.height, {'SIFT': args.SIFT, 'SURF': not (args.SIFT or args.ORB), 'ORB': args.ORB} )
     MenuIngresoGrilla(root, padx=10, pady=10)
     root.mainloop()

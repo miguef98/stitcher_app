@@ -1,4 +1,3 @@
-from multiprocessing.sharedctypes import Value
 import numpy as np
 from collections import deque
 import cv2
@@ -78,19 +77,17 @@ def stitchPar(imagenA, imagenB, ratio, tolerancia, maxIteracionesRansac, mascara
 
     return result
 def getDescriptor( desc ):
-    if desc == "SIFT": # SIFT anda regio
+    if desc['SIFT']: # SIFT anda regio
         return cv2.xfeatures2d.SIFT_create()
-    elif desc == "SURF": # SURF fue el que mejor anduvo... pero hay que compilar opencv con flag NON_FREE para tenerlo
+    elif desc['SURF']: # SURF fue el que mejor anduvo... pero hay que compilar opencv con flag NON_FREE para tenerlo
         return cv2.xfeatures2d.SURF_create()
-    elif desc == "ORB": # con las imagenes que probe, ORB no funciona
+    elif desc['ORB']: # con las imagenes que probe, ORB no funciona
         return cv2.ORB_create()
     else:
         raise ValueError("01_No existe un descriptor con ese nombre")
 
 
-def crearPanorama( grilla, infiles, *, outfile='panorama.png', ratio=0.75, tolerancia=4, ratioMascaraW=0.3, ratioMascaraH=0.5, maxIteracionesRansac=8, desc="SIFT" ):
-    #descriptor = cv2.DAISY_create()
-
+def crearPanorama( grilla, infiles, desc, *, outfile='panorama.png', ratio=0.75, tolerancia=4, ratioMascaraW=0.3, ratioMascaraH=0.5, maxIteracionesRansac=8 ):
     descriptor = getDescriptor( desc )
 
     pathTempFile = "panorama.nparr"
@@ -136,7 +133,7 @@ def crearPanorama( grilla, infiles, *, outfile='panorama.png', ratio=0.75, toler
 
 if __name__=='__main__':
     #descriptor = cv2.xfeatures2d.SURF_create()
-    descriptor = cv2.ORB_create()
+    descriptor = cv2.xfeatures2d.SIFT_create()
     grilla = (1,2)
     orden = [ i if int((i-1)/4) % 2 == 0 else 4*(int((i-1)/4)+1) - (i-1)%4 for i in range(1, grilla[0] * grilla[1] + 1)]
 
@@ -149,7 +146,7 @@ if __name__=='__main__':
 
     panorama = Panorama(path)
 
-    imagenes = deque(( Imagen( cv2.imread('Intestino/Intestino curso/' + f"{i:02d}" + '.tif'), descriptor ) for i in orden ))
+    imagenes = deque(( Imagen( cv2.imread('imagenes/Intestino/' + f"{i:02d}" + '.tif'), descriptor ) for i in orden ))
     for fila in range(grilla[0]):
         imagenFila = imagenes.popleft()
         anchoUltimaPegada = imagenFila.shape[1]
